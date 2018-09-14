@@ -2,6 +2,7 @@ package com.lwc.coordinatorlayoutorbehavior;
 
 import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
+import android.animation.ObjectAnimator;
 import android.content.Context;
 import android.support.annotation.NonNull;
 import android.support.design.widget.CoordinatorLayout;
@@ -10,6 +11,7 @@ import android.support.v4.view.ViewCompat;
 import android.util.AttributeSet;
 import android.util.Log;
 import android.view.View;
+import android.widget.LinearLayout;
 
 /**
  * FloatingActionButton 位移的自定义 Behavior
@@ -24,6 +26,7 @@ public class TranslationBehavior extends FloatingActionButton.Behavior {
 
     public TranslationBehavior(Context context, AttributeSet attrs) {
         super(context, attrs);
+
     }
 
     /**
@@ -61,12 +64,17 @@ public class TranslationBehavior extends FloatingActionButton.Behavior {
     @Override
     public void onNestedScroll(@NonNull CoordinatorLayout coordinatorLayout, @NonNull FloatingActionButton child, @NonNull View target, int dxConsumed, int dyConsumed, int dxUnconsumed, int dyUnconsumed, int type) {
         super.onNestedScroll(coordinatorLayout, child, target, dxConsumed, dyConsumed, dxUnconsumed, dyUnconsumed, type);
-        Log.e(TAG,"dyConsumed ->"+dyConsumed+"");
+        Log.e(TAG, "dyConsumed ->" + dyConsumed + "");
+
+        //找到bottombar 并执行动画，效果与FloatingActionButton一致
+        LinearLayout mBottomBar = (LinearLayout) coordinatorLayout.findViewById(R.id.ll_bottom_layout);
+
+
         //根据滑动情况执行动画 一个显示 一个隐藏
         if (dyConsumed > 0) {//往上滑动 隐藏
             if (!misShow) {
                 //((CoordinatorLayout.LayoutParams) child.getLayoutParams()).bottomMargin 意思是FloatingActionButton底部距离
-                Log.e(TAG,"((CoordinatorLayout.LayoutParams) child.getLayoutParams()).bottomMargin ->"+((CoordinatorLayout.LayoutParams) child.getLayoutParams()).bottomMargin+"");
+                Log.e(TAG, "((CoordinatorLayout.LayoutParams) child.getLayoutParams()).bottomMargin ->" + ((CoordinatorLayout.LayoutParams) child.getLayoutParams()).bottomMargin + "");
                 int transY = ((CoordinatorLayout.LayoutParams) child.getLayoutParams()).bottomMargin + child.getMeasuredHeight();
                 child.animate().translationY(transY).setListener(new AnimatorListenerAdapter() {
                     @Override
@@ -74,16 +82,22 @@ public class TranslationBehavior extends FloatingActionButton.Behavior {
                         misShow = true;
                     }
                 }).setDuration(500).start();
+
+                //执行动画
+//                mBottomBar.setTranslationY()
+                ObjectAnimator.ofFloat(mBottomBar,"translationY",0,transY).setDuration(500).start();
             }
         }
-        if (dyConsumed < 0){//往下滑动 显示
-            if (misShow){
+        if (dyConsumed < 0) {//往下滑动 显示
+            if (misShow) {
                 child.animate().translationY(0).setListener(new AnimatorListenerAdapter() {
                     @Override
                     public void onAnimationEnd(Animator animation) {
                         misShow = false;
                     }
                 }).setDuration(500).start();
+
+                ObjectAnimator.ofFloat(mBottomBar,"translationY",0,0).setDuration(500).start();
             }
         }
     }
