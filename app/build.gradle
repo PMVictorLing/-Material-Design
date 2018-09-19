@@ -36,4 +36,8 @@ dependencies {
     implementation 'com.android.support:recyclerview-v7:27.1.1'
     implementation files('libs/BaiduLBS_Android.jar')
     implementation files('libs/IndoorscapeAlbumPlugin.jar')
+
+    //glide 3.7.0
+    implementation 'com.github.bumptech.glide:glide:3.7.0'
+//    annotationProcessor 'com.github.bumptech.glide:compiler:4.8.0'
 }

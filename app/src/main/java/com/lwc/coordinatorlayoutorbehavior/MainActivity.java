@@ -19,6 +19,9 @@ import android.widget.TextView;
 
 import com.lwc.coordinatorlayoutorbehavior.adapter.GridlayoutItemDecoration;
 import com.lwc.coordinatorlayoutorbehavior.adapter.LinealayoutItemDecoration;
+import com.lwc.coordinatorlayoutorbehavior.adapter.MulitiTypeSupport;
+import com.lwc.coordinatorlayoutorbehavior.adapter.MultiItemAdatpter;
+import com.lwc.coordinatorlayoutorbehavior.bean.ChatItembean;
 
 import java.util.ArrayList;
 
@@ -27,7 +30,7 @@ public class MainActivity extends AppCompatActivity {
 
     private static final String TAG = "MainActivity";
     private RecyclerView mRecyclerView;
-    private ArrayList<String> mListData;
+    private ArrayList<ChatItembean> mListData;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -43,11 +46,13 @@ public class MainActivity extends AppCompatActivity {
         //设置布局管理器 new LinearLayoutManager(this)
         // new GridLayoutManager(this,2) -根据每列来确定从哪里开始绘制
         // new StaggeredGridLayoutManager()
-        mRecyclerView.setLayoutManager(new GridLayoutManager(this,2));
-        //设置分割线
+        mRecyclerView.setLayoutManager(new LinearLayoutManager(this));
+        //设置分割线 GridlayoutItemDecoration
 //        mRecyclerView.addItemDecoration(new ItemDecorationDider());  LinealayoutItemDecoration
-        mRecyclerView.addItemDecoration(new GridlayoutItemDecoration(this,R.drawable.item_listview_drawabler));
-        mRecyclerView.setAdapter(new RecyclerView.Adapter<ViewHolder>() {
+        mRecyclerView.addItemDecoration(new LinealayoutItemDecoration(this, R.drawable.item_listview_drawabler));
+
+        //一般写法
+        /*mRecyclerView.setAdapter(new RecyclerView.Adapter<ViewHolder>() {
             @NonNull
             @Override
             public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
@@ -67,14 +72,43 @@ public class MainActivity extends AppCompatActivity {
             public int getItemCount() {
                 return mListData.size();
             }
+        });*/
+
+        //使用通用适配器
+        // 1.单个布局item
+//        SingleItemAdapter mSingleItemAdapter = new SingleItemAdapter(this,mListData,R.layout.item_recycler_view_layout);
+//        mRecyclerView.setAdapter(mSingleItemAdapter);
+
+        //2.多个布局
+        MultiItemAdatpter mMultiItemAdatpter = new MultiItemAdatpter(this, mListData, new MulitiTypeSupport<ChatItembean>() {
+            @Override
+            public int getLayoutId(ChatItembean item) {
+                //根据数据源的id来确定不同的layout
+                if (item.getChatId() == 1) {
+                    return R.layout.item_recycler_view_layout_me;
+                } else if (item.getChatId() == 0) {
+                    return R.layout.item_recycler_view_layout;
+                }
+                return 0;
+            }
         });
+        mRecyclerView.setAdapter(mMultiItemAdatpter);
 
     }
 
     private void initData() {
         mListData = new ArrayList<>();
-        for (int i = 'A'; i <= 'Z'; i++) {
+        /*for (int i = 'A'; i <= 'Z'; i++) {
             mListData.add("" + (char) i);
+        }*/
+
+        for (int i = 0; i < 100; i++) {
+            if (i % 3 == 0) {
+                mListData.add(new ChatItembean(0, "我的消息"));
+            } else {
+                mListData.add(new ChatItembean(1, "其他人的消息"));
+            }
+
         }
     }
 

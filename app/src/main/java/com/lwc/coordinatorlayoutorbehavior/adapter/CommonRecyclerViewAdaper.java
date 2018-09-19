@@ -21,6 +21,8 @@ import java.util.List;
  */
 public abstract class CommonRecyclerViewAdaper<T> extends RecyclerView.Adapter<CommonRecyclerViewAdaper.ViewHolder> {
 
+    //多条目支持
+    private MulitiTypeSupport mTpyeSupport;
     private LayoutInflater mInflater;
     private Context mContext;
 
@@ -30,34 +32,86 @@ public abstract class CommonRecyclerViewAdaper<T> extends RecyclerView.Adapter<C
     //布局使用构造函数传递
     private int mLayoutId;
 
-    //绑定数据，使用抽象方法回传
-    public abstract void convert(ViewHolder holder, T item);
-
-    public CommonRecyclerViewAdaper(List<T> mDataList, int mLayoutId, Context context) {
+    public CommonRecyclerViewAdaper(Context context, List<T> mDataList, int mLayoutId) {
+        this.mContext = context;
         this.mDataList = mDataList;
         this.mLayoutId = mLayoutId;
-        this.mContext = context;
         this.mInflater = LayoutInflater.from(context);
+    }
+
+    public CommonRecyclerViewAdaper(Context context, List<T> mDataList, MulitiTypeSupport typeSupport) {
+        this(context, mDataList, -1);
+        this.mTpyeSupport = typeSupport;
+
     }
 
     @NonNull
     @Override
     public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+
+        if (mTpyeSupport != null) {
+            //需要多布局
+            mLayoutId = viewType;
+        }
+
         //加载布局，返回ViewHolder
         View view = mInflater.inflate(mLayoutId, parent, false);
         ViewHolder viewHolder = new ViewHolder(view);
         return viewHolder;
     }
 
-//    @Override 不然编译会报错
-    public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
+    /**
+     * 会在onCreateViewHolder()之前调用
+     *
+     * @param position
+     * @return
+     */
+    @Override
+    public int getItemViewType(int position) {
+
+        //判断是否有多布局，并返回布局id
+        if (mTpyeSupport != null) {
+            return mTpyeSupport.getLayoutId(mDataList.get(position));
+        }
+
+        return super.getItemViewType(position);
+    }
+
+    @Override
+    public void onBindViewHolder(@NonNull CommonRecyclerViewAdaper.ViewHolder holder, final int position) {
         convert(holder, mDataList.get(position));
 
+        //item点击事件 只能利用接口回调
+        if (mLisener != null) {
+            holder.itemView.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    mLisener.onClickLisener(position);
+                }
+            });
+        }
+
+
     }
+
+    /**
+     * 绑定数据，使用抽象方法回传，把必要的参数传出
+     *
+     * @param holder
+     * @param item
+     */
+    public abstract void convert(ViewHolder holder, T item);
 
     @Override
     public int getItemCount() {
         return mDataList.size();
+    }
+
+    //item点击事件 只能利用接口回调
+    private ItemOnClickLisener mLisener;
+
+    public void setItemOnClickLisener(ItemOnClickLisener lisener) {
+        this.mLisener = lisener;
     }
 
     /**
@@ -65,7 +119,7 @@ public abstract class CommonRecyclerViewAdaper<T> extends RecyclerView.Adapter<C
      */
     public class ViewHolder extends RecyclerView.ViewHolder {
 
-        //存放view的集合
+        //存放view的集合，用缓存已找到的view界面
         private SparseArray<View> mViewArray;
 
         public ViewHolder(View itemView) {
@@ -73,44 +127,84 @@ public abstract class CommonRecyclerViewAdaper<T> extends RecyclerView.Adapter<C
             mViewArray = new SparseArray<>();
         }
 
-        //设置textView文本 采用链式构造
+        //通用的功能进行封装
+        //设置textView文本 *******采用链式构造调用 一般builder 设计模式*********
         public ViewHolder setTextView(int textViewId, String string) {
             //根据id获取textView
             TextView textView = (TextView) getView(textViewId);
             textView.setText(string);
+            //采用链式调用
             return this;
         }
 
-        //设置imageview 本地资源
-        public ViewHolder setImageView(int imageViewId,int resourceId){
+        //设置imageview --- 本地资源
+        public ViewHolder setImageResource(int imageViewId, int resourceId) {
             ImageView imageView = getView(imageViewId);
             imageView.setImageResource(resourceId);
             return this;
         }
 
+        //设置imageview --- 网络资源
+        //图片处理问题，路径问题 使用第三方的 imageloader glide
+        public ViewHolder setImagePath(int imageViewId, HolderImagerLoader imagerLoader) {
+            ImageView imageView = getView(imageViewId);
+            imagerLoader.loadImage(imageView, imagerLoader.getPath());
+            return this;
+        }
+
         //设置view组件是否显示
-        public ViewHolder setViewVisibility(int viewId,int visibiliby){
+        public ViewHolder setViewVisibility(int viewId, int visibiliby) {
             getView(viewId).setVisibility(visibiliby);
             return this;
         }
 
         //设置条目点击事件
-        public void setItemOnClicklistener(View.OnClickListener listener){
-            itemView.setOnClickListener(listener);
-        }
+        /*public ViewHolder setItemOnClicklistener(int viewId, View.OnClickListener listener) {
+            getView(viewId).setOnClickListener(listener);
+            return this;
+        }*/
 
-        //根据id获取View
+        /**
+         * 根据id从itemview中获取View T
+         *
+         * @param viewId
+         * @param <T>
+         * @return
+         */
         private <T extends View> T getView(int viewId) {
             //从缓存中获取view
             View view = mViewArray.get(viewId);
+
+            //使用缓存的方式减少了findviewbyid的次数
             if (view == null) {
                 view = itemView.findViewById(viewId);
                 //存入view
-                mViewArray.put(viewId,view);
+                mViewArray.put(viewId, view);
             }
             return (T) view;
         }
 
+    }
+
+    /**
+     * 图片加载 --- 使用解耦的方式 抽象出来
+     */
+    public abstract static class HolderImagerLoader {
+        private String mPath;
+
+        public HolderImagerLoader(String path) {
+            this.mPath = path;
+        }
+
+        /**
+         * 需要重写该方法，加载图片
+         */
+        public abstract void loadImage(ImageView imageView, String path);
+
+
+        public String getPath() {
+            return mPath;
+        }
     }
 
 
